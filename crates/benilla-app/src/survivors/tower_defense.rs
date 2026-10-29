@@ -112,11 +112,12 @@ pub(super) fn refresh_route_visuals(
     mut commands: Commands,
     cache: Res<RouteCache>,
     world: WorldPoint,
+    phase: Res<State<Phase>>,
     mut visuals: ResMut<RouteVisualAssets>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    if visuals.map_index == Some(cache.map_index) || cache.points.len() < 2 { return; }
+    if *phase.get() != Phase::Playing || visuals.map_index == Some(cache.map_index) || cache.points.len() < 2 { return; }
     let path_mesh = visuals.path_mesh.get_or_insert_with(|| meshes.add(Cuboid::new(1.55, 0.12, 1.55))).clone();
     let path_material = visuals.path_material.get_or_insert_with(|| materials.add(StandardMaterial {
         base_color: Color::srgb(0.12, 0.72, 0.34),
@@ -155,6 +156,14 @@ pub(super) fn refresh_route_visuals(
         ));
     }
     visuals.map_index = Some(cache.map_index);
+}
+
+pub(super) fn toggle_route_visibility(
+    phase: Res<State<Phase>>,
+    mut markers: Query<&mut Visibility, With<RouteMarker>>,
+) {
+    let visibility = if *phase.get() == Phase::Playing { Visibility::Visible } else { Visibility::Hidden };
+    for mut marker in &mut markers { *marker = visibility; }
 }
 
 /// Press T while aiming at open ground to place a sentry for 50 gold.
