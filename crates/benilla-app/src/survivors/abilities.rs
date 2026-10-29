@@ -252,7 +252,7 @@ pub(super) fn cast_abilities(
             6 => keys.just_pressed(KeyCode::KeyQ),
             7 => keys.just_pressed(KeyCode::KeyE),
             8 => keys.just_pressed(KeyCode::KeyR),
-            9 => keys.just_pressed(KeyCode::KeyF),
+            9 => keys.just_pressed(KeyCode::KeyG),
             _ => false,
         };
         if !matches!(def.kind, Kind::Aura | Kind::Orbit) && !key_pressed {
