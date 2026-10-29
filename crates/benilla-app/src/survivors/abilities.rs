@@ -196,6 +196,7 @@ fn entities(foes: &[Foe]) -> Vec<Entity> {
 pub(super) fn cast_abilities(
     mut commands: Commands,
     time: Res<Time>,
+    keys: Res<ButtonInput<KeyCode>>,
     mut run: ResMut<Run>,
     mut rng: ResMut<Rng>,
     spells: Option<Res<crate::ui_action::Spells>>,
@@ -239,6 +240,24 @@ pub(super) fn cast_abilities(
         }
         let o = &run.abilities[i];
         let def = o.def;
+        // Persistent aura/orbit effects retain their automatic behavior. Active spells must be
+        // deliberately cast by the player, using the matching ability slot key.
+        let key_pressed = match i {
+            0 => keys.just_pressed(KeyCode::Digit1),
+            1 => keys.just_pressed(KeyCode::Digit2),
+            2 => keys.just_pressed(KeyCode::Digit3),
+            3 => keys.just_pressed(KeyCode::Digit4),
+            4 => keys.just_pressed(KeyCode::Digit5),
+            5 => keys.just_pressed(KeyCode::Digit6),
+            6 => keys.just_pressed(KeyCode::KeyQ),
+            7 => keys.just_pressed(KeyCode::KeyE),
+            8 => keys.just_pressed(KeyCode::KeyR),
+            9 => keys.just_pressed(KeyCode::KeyF),
+            _ => false,
+        };
+        if !matches!(def.kind, Kind::Aura | Kind::Orbit) && !key_pressed {
+            continue;
+        }
         let mult = o.damage_mult() * stats.might;
         let p = Params {
             dmg: def.damage * mult,
