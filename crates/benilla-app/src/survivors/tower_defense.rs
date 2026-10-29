@@ -50,8 +50,21 @@ pub(super) struct GoldAwarded;
 #[derive(Component)]
 pub(super) struct Tower { pub cooldown: f32, pub range: f32, pub damage: f32 }
 
+#[derive(Resource)]
+pub(super) struct WaveSpawner {
+    /// Countdown before the next wave begins.
+    pub timer: f32,
+    pub wave: u32,
+    /// True while a wave is still being cleared. The next wave cannot spawn until all living
+    /// enemies from this wave are gone.
+    pub active: bool,
+}
+impl Default for WaveSpawner {
+    fn default() -> Self { Self { timer: 8.0, wave: 0, active: false } }
+}
+
 #[derive(Resource, Default)]
-pub(super) struct WaveSpawner { pub timer: f32, pub wave: u32 }
+pub(super) struct TowerPlacement { pub active: bool }
 
 #[derive(Resource, Default)]
 pub(super) struct RouteCache { pub map_index: usize, pub points: Vec<Vec3> }
@@ -64,20 +77,32 @@ const TOWER_DAMAGE: f32 = 28.0;
 /// coordinates. Every battleground gets a different orientation and handedness.
 pub(super) fn route_points(map_index: usize, map: &data::MapDef, world: &WorldPoint) -> Vec<Vec3> {
     let center = hero::arena(map);
-    let scale = (map.leash / 80.0).clamp(0.55, 1.15);
+    // Scale the lane to the actual battleground footprint. The long switchback gives towers
+    // several firing opportunities rather than letting creeps reach the objective in seconds.
+    let half = (map.leash * 0.76).clamp(48.0, 125.0);
+    let lane = half * 0.58;
     let mirror = if map_index % 2 == 0 { 1.0 } else { -1.0 };
-    let bend = (map_index % 5) as f32 - 2.0;
     let offset = (map_index % 3) as f32 - 1.0;
     let local = [
-        Vec2::new(offset * 3.0, 42.0),
-        Vec2::new((17.0 + bend * 1.4) * mirror, 30.0),
-        Vec2::new((-17.0 + offset * 2.0) * mirror, 17.0 + bend),
-        Vec2::new((17.0 - bend * 1.2) * mirror, 4.0 - offset * 2.0),
-        Vec2::new((-15.0 - bend) * mirror, -9.0 + offset * 2.0),
-        Vec2::new(offset * 2.5, -24.0),
+        Vec2::new(-lane, -half),
+        Vec2::new(lane, -half),
+        Vec2::new(lane, -half * 0.76),
+        Vec2::new(-lane, -half * 0.76),
+        Vec2::new(-lane, -half * 0.52),
+        Vec2::new(lane, -half * 0.52),
+        Vec2::new(lane, -half * 0.27),
+        Vec2::new(-lane, -half * 0.27),
+        Vec2::new(-lane, -half * 0.02),
+        Vec2::new(lane, -half * 0.02),
+        Vec2::new(lane, half * 0.23),
+        Vec2::new(-lane, half * 0.23),
+        Vec2::new(-lane, half * 0.49),
+        Vec2::new(lane * mirror, half * 0.49),
+        Vec2::new(lane * mirror, half * 0.72),
+        Vec2::new(offset * 5.0, half),
     ];
     local.iter().map(|p| {
-        let p = *p * scale;
+        let p = Vec2::new(p.x * mirror, p.y);
         let rotated = match map_index % 4 {
             1 => Vec2::new(p.y, -p.x),
             2 => Vec2::new(-p.x, -p.y),
@@ -171,11 +196,13 @@ pub(super) fn toggle_route_visibility(
     for mut marker in &mut markers { *marker = visibility; }
 }
 
-/// Press T while aiming at open ground to place a sentry for 50 gold.
+/// Press T to enter/leave placement mode; click a legal position to place a sentry.
 pub(super) fn place_tower(
     mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
+    mouse: Res<ButtonInput<MouseButton>>,
     aim: Res<AimPoint>,
+    mut placement: ResMut<TowerPlacement>,
     selection: Res<Selection>,
     mut run: ResMut<Run>,
     mut economy: ResMut<Economy>,
@@ -183,7 +210,19 @@ pub(super) fn place_tower(
     cache: Res<RouteCache>,
     phase: Res<State<Phase>>,
 ) {
-    if *phase.get() != Phase::Playing || !keys.just_pressed(KeyCode::KeyT) || economy.gold < TOWER_COST { return; }
+    if *phase.get() != Phase::Playing { placement.active = false; return; }
+    if keys.just_pressed(KeyCode::Escape) { placement.active = false; }
+    if keys.just_pressed(KeyCode::KeyT) {
+        placement.active = !placement.active;
+        run.banner = Some((if placement.active {
+            format!("Tower placement: click open ground to place ({} gold). Esc cancels.", TOWER_COST)
+        } else { "Tower placement cancelled.".to_string() }, 2.5));
+    }
+    if !placement.active || !mouse.just_pressed(MouseButton::Left) { return; }
+    if economy.gold < TOWER_COST {
+        run.banner = Some(("Not enough gold to place a tower.".into(), 2.0));
+        return;
+    }
     let Some(pos) = aim.0 else { return };
     let center = hero::arena(selection.stage_def());
     if units::flat(pos - center).length() > selection.stage_def().leash * 0.85
@@ -201,6 +240,7 @@ pub(super) fn place_tower(
     }, pos, 0.0);
     commands.entity(e).insert(Tower { cooldown: 0.1, range: TOWER_RANGE, damage: TOWER_DAMAGE });
     economy.gold -= TOWER_COST;
+    placement.active = false;
     run.banner = Some((format!("Sentry placed (-{} gold). Press T to place another.", TOWER_COST), 2.0));
 }
 
@@ -215,19 +255,24 @@ pub(super) fn spawn_wave(
     enemies_query: Query<&Enemy>,
 ) {
     if run.dead_t.is_some() || cache.points.len() < 2 { return; }
-    waves.timer -= time.delta_secs();
-    if waves.timer > 0.0 { return; }
     let alive = enemies_query.iter().filter(|e| !e.dead).count();
-    if alive > 20 + waves.wave as usize * 2 {
-        waves.timer = 0.5;
+    if waves.active {
+        if alive > 0 { return; }
+        // A cleared wave always gives the player a real build/breathe window.
+        waves.active = false;
+        waves.timer = 12.0;
+        run.banner = Some((format!("Wave {} cleared! 12 seconds to prepare.", waves.wave), 3.0));
         return;
     }
+    waves.timer -= time.delta_secs();
+    if waves.timer > 0.0 { return; }
     waves.wave += 1;
-    waves.timer = (5.0 - waves.wave as f32 * 0.08).clamp(1.0, 5.0);
+    waves.active = true;
+    waves.timer = 0.0;
     let roster = data::roster(selection.stage);
     if roster.enemies.is_empty() { return; }
     let pool = data::wave_pool(run.elapsed, roster.enemies.len());
-    let count = (5 + waves.wave as usize * 2).min(24);
+    let count = (12 + waves.wave as usize * 4).min(60);
     for _ in 0..count {
         let def = &roster.enemies[pool[rng.index(pool.len())]];
         let start = cache.points[0];
