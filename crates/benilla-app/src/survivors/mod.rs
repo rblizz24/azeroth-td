@@ -53,6 +53,7 @@ impl Plugin for SurvivorsPlugin {
             .init_resource::<tower_defense::Economy>()
             .init_resource::<tower_defense::WaveSpawner>()
             .init_resource::<tower_defense::RouteCache>()
+            .init_resource::<tower_defense::RouteVisualAssets>()
             .init_resource::<hud::Offer>()
             .init_resource::<cards::PendingPick>()
             .add_message::<abilities::Hit>()
@@ -67,6 +68,7 @@ impl Plugin for SurvivorsPlugin {
                     hero::drop_stray_buttons,
                     hero::aim_cursor,
                     tower_defense::refresh_route,
+                    tower_defense::refresh_route_visuals,
                     tower_defense::place_tower,
                     mobility::cast_mobility,
                     hero::drive_hero,
