@@ -1254,7 +1254,7 @@ pub(super) fn refresh_hud(
     let kills = run.kills;
     if let Ok(mut t) = texts.p2().single_mut() {
         **t = format!(
-            "Wave {}  |  Gold {}  |  Stronghold {}/{}  |  Kills {}",
+            "Wave {}  |  Gold {}  |  Stronghold {}/{}  |  Kills {}  |  Towers: T then click",
             waves.wave, economy.gold, objective.hp as u32, objective.max_hp as u32, kills
         );
     }
@@ -1357,6 +1357,25 @@ pub(super) fn refresh_hud(
                             MaterialNode(handle.clone()),
                             AbilitySweep { handle, index: i },
                         ));
+                        let hotkey = match i {
+                            0 => "1", 1 => "2", 2 => "3", 3 => "4", 4 => "5",
+                            5 => "6", 6 => "Q", 7 => "E", 8 => "R", 9 => "F",
+                            _ => "",
+                        };
+                        if !hotkey.is_empty() {
+                            slot.spawn((
+                                Node {
+                                    position_type: PositionType::Absolute,
+                                    left: Val::Px(2.0),
+                                    top: Val::Px(0.0),
+                                    ..default()
+                                },
+                                Text::new(hotkey),
+                                TextFont { font: f.clone(), font_size: 10.0, ..default() },
+                                TextColor(Color::WHITE),
+                                bevy::ui::FocusPolicy::Pass,
+                            ));
+                        }
                     }
                     slot.spawn(Node {
                         position_type: PositionType::Absolute,
