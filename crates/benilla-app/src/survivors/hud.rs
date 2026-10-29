@@ -1216,6 +1216,9 @@ pub(super) fn refresh_hud(
     phase: Res<State<Phase>>,
     mut run: ResMut<Run>,
     selection: Res<Selection>,
+    objective: Res<super::tower_defense::Objective>,
+    economy: Res<super::tower_defense::Economy>,
+    waves: Res<super::tower_defense::WaveSpawner>,
     font: Res<HudFont>,
     mut texts: ParamSet<(
         Query<&mut Text, With<LevelText>>,
@@ -1250,7 +1253,10 @@ pub(super) fn refresh_hud(
     }
     let kills = run.kills;
     if let Ok(mut t) = texts.p2().single_mut() {
-        **t = format!("Kills {kills}");
+        **t = format!(
+            "Wave {}  |  Gold {}  |  Stronghold {}/{}  |  Kills {}",
+            waves.wave, economy.gold, objective.hp as u32, objective.max_hp as u32, kills
+        );
     }
     let banner = match run.banner.as_mut() {
         Some((msg, t)) => {
