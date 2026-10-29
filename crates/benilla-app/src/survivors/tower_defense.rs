@@ -63,13 +63,15 @@ pub(super) fn route_points(map_index: usize, map: &data::MapDef, world: &WorldPo
     let center = hero::arena(map);
     let scale = (map.leash / 80.0).clamp(0.55, 1.15);
     let mirror = if map_index % 2 == 0 { 1.0 } else { -1.0 };
+    let bend = (map_index % 5) as f32 - 2.0;
+    let offset = (map_index % 3) as f32 - 1.0;
     let local = [
-        Vec2::new(0.0, 42.0),
-        Vec2::new(17.0 * mirror, 30.0),
-        Vec2::new(-17.0 * mirror, 17.0),
-        Vec2::new(17.0 * mirror, 4.0),
-        Vec2::new(-15.0 * mirror, -9.0),
-        Vec2::new(0.0, -24.0),
+        Vec2::new(offset * 3.0, 42.0),
+        Vec2::new((17.0 + bend * 1.4) * mirror, 30.0),
+        Vec2::new((-17.0 + offset * 2.0) * mirror, 17.0 + bend),
+        Vec2::new((17.0 - bend * 1.2) * mirror, 4.0 - offset * 2.0),
+        Vec2::new((-15.0 - bend) * mirror, -9.0 + offset * 2.0),
+        Vec2::new(offset * 2.5, -24.0),
     ];
     local.iter().map(|p| {
         let p = *p * scale;
