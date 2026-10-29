@@ -175,9 +175,25 @@ pub(super) fn move_creeps(
 ) {
     let dt = time.delta_secs();
     if dt <= 0.0 || cache.points.len() < 2 { return; }
-    for (mut tf, enemy, mut follower, mut movement) in &mut creeps {
+    for (mut tf, mut enemy, mut follower, mut movement) in &mut creeps {
         if enemy.dead { movement.speed = 0.0; movement.flags = 0; continue; }
-        if follower.next >= cache.points.len() { movement.speed = 0.0; movement.flags = 0; continue; }
+        enemy.slow_t = (enemy.slow_t - dt).max(0.0);
+        enemy.root_t = (enemy.root_t - dt).max(0.0);
+        enemy.stun_t = (enemy.stun_t - dt).max(0.0);
+        enemy.fear_t = (enemy.fear_t - dt).max(0.0);
+        enemy.weaken_t = (enemy.weaken_t - dt).max(0.0);
+        if enemy.slow_t <= 0.0 { enemy.slow = 1.0; }
+        if enemy.weaken_t <= 0.0 { enemy.weaken = 1.0; }
+        if follower.next >= cache.points.len() {
+            movement.speed = 0.0;
+            movement.flags = 0;
+            continue;
+        }
+        if enemy.root_t > 0.0 || enemy.stun_t > 0.0 {
+            movement.speed = 0.0;
+            movement.flags = 0;
+            continue;
+        }
         let target = cache.points[follower.next];
         let delta = units::flat(target - tf.translation);
         let distance = delta.length();
