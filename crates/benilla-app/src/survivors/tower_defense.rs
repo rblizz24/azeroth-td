@@ -101,11 +101,11 @@ pub(super) fn place_tower(
     selection: Res<Selection>,
     mut run: ResMut<Run>,
     mut economy: ResMut<Economy>,
-    world: WorldPoint,
     existing: Query<&Transform, With<Tower>>,
     cache: Res<RouteCache>,
+    phase: Res<State<Phase>>,
 ) {
-    if !keys.just_pressed(KeyCode::KeyT) || economy.gold < TOWER_COST { return; }
+    if *phase.get() != Phase::Playing || !keys.just_pressed(KeyCode::KeyT) || economy.gold < TOWER_COST { return; }
     let Some(pos) = aim.0 else { return };
     let center = hero::arena(selection.stage_def());
     if units::flat(pos - center).length() > selection.stage_def().leash * 0.85
@@ -123,7 +123,7 @@ pub(super) fn place_tower(
     }, pos, 0.0);
     commands.entity(e).insert(Tower { cooldown: 0.1, range: TOWER_RANGE, damage: TOWER_DAMAGE });
     economy.gold -= TOWER_COST;
-    let _ = world;
+    run.banner = Some((format!("Sentry placed (-{} gold). Press T to place another.", TOWER_COST), 2.0));
 }
 
 pub(super) fn spawn_wave(
