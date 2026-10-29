@@ -54,6 +54,7 @@ impl Plugin for SurvivorsPlugin {
             .init_resource::<tower_defense::WaveSpawner>()
             .init_resource::<tower_defense::RouteCache>()
             .init_resource::<tower_defense::RouteVisualAssets>()
+            .init_resource::<tower_defense::TowerPlacement>()
             .init_resource::<hud::Offer>()
             .init_resource::<cards::PendingPick>()
             .add_message::<abilities::Hit>()
