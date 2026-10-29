@@ -33,6 +33,18 @@ pub(super) struct Economy { pub gold: u32 }
 impl Default for Economy { fn default() -> Self { Self { gold: 200 } } }
 
 #[derive(Component)]
+pub(super) struct RouteMarker;
+
+#[derive(Resource, Default)]
+pub(super) struct RouteVisualAssets {
+    pub map_index: Option<usize>,
+    path_mesh: Option<Handle<Mesh>>,
+    path_material: Option<Handle<StandardMaterial>>,
+    core_mesh: Option<Handle<Mesh>>,
+    core_material: Option<Handle<StandardMaterial>>,
+}
+
+#[derive(Component)]
 pub(super) struct Tower { pub cooldown: f32, pub range: f32, pub damage: f32 }
 
 #[derive(Resource, Default)]
@@ -81,7 +93,7 @@ pub(super) fn refresh_route(
     mut objective: ResMut<Objective>,
     mut economy: ResMut<Economy>,
     mut waves: ResMut<WaveSpawner>,
-    spawned: Query<Entity, Or<(With<Enemy>, With<Tower>)>>,
+    spawned: Query<Entity, Or<(With<Enemy>, With<Tower>, With<RouteMarker>)>>,
 ) {
     if cache.map_index == selection.stage && !cache.points.is_empty() { return; }
     for entity in &spawned { commands.entity(entity).despawn(); }
@@ -91,6 +103,58 @@ pub(super) fn refresh_route(
     objective.hp = objective.max_hp;
     economy.gold = 200;
     *waves = WaveSpawner::default();
+}
+
+
+/// Build visible, terrain-following lane tiles and a stronghold marker with the same Bevy 3D
+/// renderer used by the client world. The path is intentionally high contrast against the zone.
+pub(super) fn refresh_route_visuals(
+    mut commands: Commands,
+    cache: Res<RouteCache>,
+    world: WorldPoint,
+    mut visuals: ResMut<RouteVisualAssets>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    if visuals.map_index == Some(cache.map_index) || cache.points.len() < 2 { return; }
+    let path_mesh = visuals.path_mesh.get_or_insert_with(|| meshes.add(Cuboid::new(1.55, 0.12, 1.55))).clone();
+    let path_material = visuals.path_material.get_or_insert_with(|| materials.add(StandardMaterial {
+        base_color: Color::srgb(0.12, 0.72, 0.34),
+        unlit: true,
+        ..default()
+    })).clone();
+    let core_mesh = visuals.core_mesh.get_or_insert_with(|| meshes.add(Cuboid::new(3.6, 4.2, 3.6))).clone();
+    let core_material = visuals.core_material.get_or_insert_with(|| materials.add(StandardMaterial {
+        base_color: Color::srgb(0.95, 0.62, 0.12),
+        unlit: true,
+        ..default()
+    })).clone();
+
+    for pair in cache.points.windows(2) {
+        let start = pair[0];
+        let end = pair[1];
+        let distance = units::flat(end - start).length();
+        let steps = (distance / 2.25).ceil().max(1.0) as usize;
+        for i in 0..steps {
+            let p = start.lerp(end, (i as f32 + 0.5) / steps as f32);
+            let y = world.terrain_height_under(p).unwrap_or(p.y);
+            commands.spawn((
+                Mesh3d(path_mesh.clone()),
+                MeshMaterial3d(path_material.clone()),
+                Transform::from_translation(Vec3::new(p.x, y + 0.14, p.z)),
+                RouteMarker,
+            ));
+        }
+    }
+    if let Some(goal) = cache.points.last().copied() {
+        commands.spawn((
+            Mesh3d(core_mesh),
+            MeshMaterial3d(core_material),
+            Transform::from_translation(goal + Vec3::Y * 2.1),
+            RouteMarker,
+        ));
+    }
+    visuals.map_index = Some(cache.map_index);
 }
 
 /// Press T while aiming at open ground to place a sentry for 50 gold.
