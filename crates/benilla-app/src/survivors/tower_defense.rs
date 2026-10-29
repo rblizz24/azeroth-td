@@ -114,8 +114,12 @@ pub(super) fn route_points(map_index: usize, map: &data::MapDef, world: &WorldPo
         Vec2::new(lane * mirror, half * 0.72),
         Vec2::new(offset * 5.0, half),
     ];
-    local.iter().map(|p| {
-        let p = Vec2::new(p.x * mirror, p.y);
+    local.iter().enumerate().map(|(i, p)| {
+        // Deterministic per-map offsets keep the switchback recognizable while giving each
+        // battleground a different lane footprint instead of reusing an identical path.
+        let side_bend = (((map_index * 7 + i * 3) % 7) as f32 - 3.0) * lane * 0.035;
+        let depth_bend = (((map_index * 5 + i * 2) % 5) as f32 - 2.0) * half * 0.018;
+        let p = Vec2::new((p.x + side_bend) * mirror, p.y + depth_bend);
         let rotated = match map_index % 4 {
             1 => Vec2::new(p.y, -p.x),
             2 => Vec2::new(-p.x, -p.y),
