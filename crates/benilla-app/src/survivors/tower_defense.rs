@@ -249,6 +249,7 @@ pub(super) fn spawn_wave(
 pub(super) fn move_creeps(
     time: Res<Time>,
     cache: Res<RouteCache>,
+    world: WorldPoint,
     mut creeps: Query<(&mut Transform, &mut Enemy, &mut RouteFollower, &mut MovementState)>,
 ) {
     let dt = time.delta_secs();
@@ -281,6 +282,7 @@ pub(super) fn move_creeps(
         }
         let direction = delta / distance;
         tf.translation += direction * enemy.speed * enemy.slow * dt.min(0.1);
+        tf.translation.y = world.terrain_height_under(tf.translation).unwrap_or(tf.translation.y);
         tf.rotation = Quat::from_rotation_y(units::yaw_toward(direction));
         movement.speed = enemy.speed * enemy.slow;
         movement.flags = move_flags::FORWARD;
