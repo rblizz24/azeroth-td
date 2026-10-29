@@ -10,7 +10,7 @@ use super::data;
 use super::enemies::{self, Enemy};
 use super::hero::{self, AimPoint};
 use super::units::{self, UnitSpec};
-use super::{Phase, Rng, Run, RunEntity, Selection};
+use super::{Phase, Rng, Run, Selection};
 use crate::creature_anim::{move_flags, MovementState};
 
 #[derive(Component, Clone)]
@@ -81,7 +81,7 @@ pub(super) fn refresh_route(
     mut objective: ResMut<Objective>,
     mut economy: ResMut<Economy>,
     mut waves: ResMut<WaveSpawner>,
-    spawned: Query<Entity, With<RunEntity>>,
+    spawned: Query<Entity, Or<(With<Enemy>, With<Tower>)>>,
 ) {
     if cache.map_index == selection.stage && !cache.points.is_empty() { return; }
     for entity in &spawned { commands.entity(entity).despawn(); }
