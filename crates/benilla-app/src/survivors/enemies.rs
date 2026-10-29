@@ -93,7 +93,7 @@ fn radius_for(def: &EnemyDef) -> f32 {
     (if def.big { 1.3 } else { 0.6 }) * def.scale
 }
 
-fn spawn_enemy(
+pub(super) fn spawn_enemy(
     commands: &mut Commands,
     run: &mut Run,
     def: &'static EnemyDef,
