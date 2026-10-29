@@ -45,6 +45,9 @@ pub(super) struct RouteVisualAssets {
 }
 
 #[derive(Component)]
+struct GoldAwarded;
+
+#[derive(Component)]
 pub(super) struct Tower { pub cooldown: f32, pub range: f32, pub damage: f32 }
 
 #[derive(Resource, Default)]
@@ -281,6 +284,19 @@ pub(super) fn move_creeps(
         tf.rotation = Quat::from_rotation_y(units::yaw_toward(direction));
         movement.speed = enemy.speed * enemy.slow;
         movement.flags = move_flags::FORWARD;
+    }
+}
+
+/// Kills fund the defense; a boss is worth enough for a replacement sentry.
+pub(super) fn award_gold(
+    mut commands: Commands,
+    mut economy: ResMut<Economy>,
+    dead: Query<(Entity, &Enemy, Has<GoldAwarded>)>,
+) {
+    for (entity, enemy, awarded) in &dead {
+        if !enemy.dead || awarded { continue; }
+        economy.gold = economy.gold.saturating_add(if enemy.boss { 75 } else { 5 });
+        commands.entity(entity).insert(GoldAwarded);
     }
 }
 
