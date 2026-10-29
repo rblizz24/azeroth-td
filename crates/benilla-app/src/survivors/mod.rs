@@ -87,6 +87,7 @@ impl Plugin for SurvivorsPlugin {
                     abilities::cast_abilities,
                     abilities::tick_areas,
                     abilities::apply_hits,
+                    tower_defense::award_gold,
                     enemies::tick_marks,
                     enemies::drop_loot,
                     enemies::collect_gems,
