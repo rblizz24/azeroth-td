@@ -17,6 +17,7 @@ mod menu;
 mod minimap;
 mod mobility;
 mod units;
+mod tower_defense;
 
 use benilla_world::schedule::WorldStage;
 use bevy::prelude::*;
@@ -48,6 +49,10 @@ impl Plugin for SurvivorsPlugin {
             .init_resource::<hero::AimPoint>()
             .init_resource::<abilities::PendingHits>()
             .init_resource::<enemies::Spawner>()
+            .init_resource::<tower_defense::Objective>()
+            .init_resource::<tower_defense::Economy>()
+            .init_resource::<tower_defense::WaveSpawner>()
+            .init_resource::<tower_defense::RouteCache>()
             .init_resource::<hud::Offer>()
             .init_resource::<cards::PendingPick>()
             .add_message::<abilities::Hit>()
@@ -61,6 +66,8 @@ impl Plugin for SurvivorsPlugin {
                 (
                     hero::drop_stray_buttons,
                     hero::aim_cursor,
+                    tower_defense::refresh_route,
+                    tower_defense::place_tower,
                     mobility::cast_mobility,
                     hero::drive_hero,
                     hero::place_camera,
@@ -71,8 +78,10 @@ impl Plugin for SurvivorsPlugin {
             .add_systems(
                 Update,
                 (
-                    enemies::spawn_enemies,
-                    enemies::move_enemies,
+                    tower_defense::spawn_wave,
+                    tower_defense::move_creeps,
+                    tower_defense::tower_fire,
+                    tower_defense::leak_damage,
                     abilities::cast_abilities,
                     abilities::tick_areas,
                     abilities::apply_hits,
