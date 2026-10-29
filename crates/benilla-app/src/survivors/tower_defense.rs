@@ -73,13 +73,26 @@ const TOWER_COST: u32 = 50;
 const TOWER_RANGE: f32 = 17.0;
 const TOWER_DAMAGE: f32 = 28.0;
 
+/// Distance from a cursor point to a flat route segment, so towers can only be built beside
+/// the lane, not on a long segment between its waypoints.
+fn route_segment_distance(point: Vec3, start: Vec3, end: Vec3) -> f32 {
+    let segment = units::flat(end - start);
+    let length_sq = segment.length_squared();
+    if length_sq <= f32::EPSILON {
+        return units::flat(point - start).length();
+    }
+    let from_start = units::flat(point - start);
+    let t = (from_start.dot(segment) / length_sq).clamp(0.0, 1.0);
+    units::flat(point - (start + segment * t)).length()
+}
+
 /// A readable, map-specific serpentine route placed relative to the selected map's real start
 /// coordinates. Every battleground gets a different orientation and handedness.
 pub(super) fn route_points(map_index: usize, map: &data::MapDef, world: &WorldPoint) -> Vec<Vec3> {
     let center = hero::arena(map);
     // Scale the lane to the actual battleground footprint. The long switchback gives towers
     // several firing opportunities rather than letting creeps reach the objective in seconds.
-    let half = (map.leash * 0.76).clamp(48.0, 125.0);
+    let half = (map.leash * 0.76).clamp(16.0, 125.0);
     let lane = half * 0.58;
     let mirror = if map_index % 2 == 0 { 1.0 } else { -1.0 };
     let offset = (map_index % 3) as f32 - 1.0;
@@ -228,15 +241,19 @@ pub(super) fn place_tower(
     if units::flat(pos - center).length() > selection.stage_def().leash * 0.85
         || units::flat(pos - cache.points.last().copied().unwrap_or(center)).length() < 5.0
         || existing.iter().any(|tf| units::flat(tf.translation - pos).length() < 4.0)
-        || cache.points.iter().any(|p| units::flat(*p - pos).length() < 4.0)
+        || cache.points.windows(2).any(|segment| route_segment_distance(pos, segment[0], segment[1]) < 6.0)
     { return; }
     // Use the selected class's real in-client display model so towers render through the same
     // WoW model attachment pipeline as the rest of the game rather than as placeholder geometry.
-    let display = selection.class_def().map(|c| c.looks[0]).unwrap_or(0);
+    let Some(class) = selection.class_def() else { return };
+    let (display, race, sex) = selection.look
+        .and_then(|i| selection.looks.get(i).copied())
+        .unwrap_or((class.looks[0], 0, 0));
     let serial = run.guid();
     let e = units::spawn_unit(&mut commands, &UnitSpec {
-        serial, display, scale: 0.8, level: 1, faction: units::FACTION_FRIENDLY,
-        bytes0: 0, weapons: &[], sheath: 0,
+        serial, display, scale: 1.0, level: 60, faction: units::FACTION_FRIENDLY,
+        bytes0: u32::from(race) | (u32::from(class.id) << 8) | (u32::from(sex) << 16) | (u32::from(class.power) << 24),
+        weapons: class.weapons, sheath: class.sheath,
     }, pos, 0.0);
     commands.entity(e).insert(Tower { cooldown: 0.1, range: TOWER_RANGE, damage: TOWER_DAMAGE });
     economy.gold -= TOWER_COST;
