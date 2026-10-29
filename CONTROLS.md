@@ -1,6 +1,6 @@
 # Controls
 
-**Azeroth Survivors** — top-down, one hand on WASD, the other on the wheel.
+**Azeroth Survivors: Tower Defense** — the original top-down WoW world and class combat, now defending a stronghold.
 
 | When | Key / Input | Action |
 |---|---|---|
@@ -8,7 +8,7 @@
 | Menu | **Enter** (or **Enter World**) | start the run; the world travels to the zone picked |
 | Playing | **W / S / A / D** or **arrow keys** | move the hero (locked camera: the hero faces the cursor, backpedals and strafes) |
 | Playing | **Space** | jump |
-| Playing | **F** (from level 5) | your class's movement spell: Blink, Charge… aim at the cursor |
+| Playing | **F** (from level 5) | your class's movement spell: Blink, Charge… aim at the cursor |\n| Playing | **T** | place a sentry at the cursor for 50 gold (not on the route or too close to another tower) |
 | Playing | **C** | unlock / lock the camera |
 | Any | **G** | toggle the picture polish (`?grade=0` starts it off) |
 | Playing | **mouse wheel** | zoom, from over the shoulder out to 70 yd |
