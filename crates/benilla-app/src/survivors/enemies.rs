@@ -100,7 +100,7 @@ pub(super) fn spawn_enemy(
     pos: Vec3,
     hero: Vec3,
     boss: bool,
-) {
+) -> Entity {
     let scale = data::hp_scale(run.elapsed);
     let serial = run.guid();
     let e = units::spawn_unit(
@@ -142,6 +142,7 @@ pub(super) fn spawn_enemy(
         },
         Marks::debuffs(),
     ));
+    e
 }
 
 fn ground(world: &WorldPoint, mut p: Vec3, fallback: f32) -> Vec3 {
