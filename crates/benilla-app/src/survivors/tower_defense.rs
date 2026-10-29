@@ -45,7 +45,7 @@ pub(super) struct RouteVisualAssets {
 }
 
 #[derive(Component)]
-struct GoldAwarded;
+pub(super) struct GoldAwarded;
 
 #[derive(Component)]
 pub(super) struct Tower { pub cooldown: f32, pub range: f32, pub damage: f32 }
